@@ -11,6 +11,9 @@ struct macosAppApp: App {
         WindowGroup("ILoveWork — 打工人配置") {
             ContentView()
                 .onAppear {
+                    // Start OA Background Syncer
+                    let _ = OABackgroundSyncer.shared
+                    
                     NotificationManager.shared.requestPermission { granted in
                         if granted {
                             let config = ConfigStore.load()

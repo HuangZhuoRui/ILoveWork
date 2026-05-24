@@ -47,6 +47,24 @@ class SettingsViewModel(private val repository: ConfigRepository) {
             is SettingsIntent.UpdatePayday ->
                 _state.update { it.copy(payday = intent.day, isSaved = false) }
 
+            is SettingsIntent.UpdateOaUserName ->
+                _state.update { it.copy(oaUserName = intent.name, isSaved = false) }
+
+            is SettingsIntent.ConnectOa ->
+                _state.update { it.copy(oaAccessToken = intent.accessToken, oaConnected = true, isSaved = false) }
+
+            is SettingsIntent.DisconnectOa ->
+                _state.update { it.copy(oaAccessToken = "", oaConnected = false, isSaved = false) }
+
+            is SettingsIntent.SyncOaTimes ->
+                _state.update { it.copy(
+                    workStartHour = intent.startHour,
+                    workStartMinute = intent.startMin,
+                    workEndHour = intent.endHour,
+                    workEndMinute = intent.endMin,
+                    isSaved = false
+                ) }
+
             is SettingsIntent.SaveConfig -> {
                 val config = _state.value.toWorkConfig()
                 repository.saveWorkConfig(config)

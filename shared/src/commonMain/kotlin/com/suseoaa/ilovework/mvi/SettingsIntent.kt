@@ -13,5 +13,9 @@ sealed class SettingsIntent {
     data class UpdateStatutoryHolidays(val holidays: Set<String>, val makeupDays: Set<String>) : SettingsIntent()
     data class UpdateIsRestDayPaid(val isPaid: Boolean) : SettingsIntent()
     data class UpdatePayday(val day: Int) : SettingsIntent()
+    data class UpdateOaUserName(val name: String) : SettingsIntent()
+    data class ConnectOa(val accessToken: String) : SettingsIntent()
+    object DisconnectOa : SettingsIntent()
+    data class SyncOaTimes(val startHour: Int, val startMin: Int, val endHour: Int, val endMin: Int) : SettingsIntent()
     object SaveConfig : SettingsIntent()
 }

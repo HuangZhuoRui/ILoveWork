@@ -23,5 +23,12 @@ data class WorkConfig(
     val statutoryHolidays: Set<String> = emptySet(), // Format: YYYY-MM-DD
     val statutoryMakeupDays: Set<String> = emptySet(), // Format: YYYY-MM-DD
     val isRestDayPaid: Boolean = false, // Whether regular rest days are paid
-    val payday: Int = 10
+    val payday: Int = 10,
+    val oaUserName: String = "黄卓睿",
+    val oaAccessToken: String = "",
+    val oaConnected: Boolean = false,
+    val workHoursPerDay: Double = 9.0,
+    val enableAutoOASync: Boolean = true,
+    val lastOASyncDate: String = "",
+    val todayClockInTime: String = ""
 )

@@ -1,0 +1,1 @@
+{"jsonrpc":"2.0","id":1,"error":{"code":-32602,"message":"Unknown tool: invalid_tool_name","data":"Tool not found: oa_service_attendance_getDailyReport"}}

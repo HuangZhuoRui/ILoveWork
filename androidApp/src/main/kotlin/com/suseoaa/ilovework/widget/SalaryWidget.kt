@@ -82,8 +82,9 @@ class SalaryWidget : GlanceAppWidget() {
                     if (state.secondsUntilOffWork > 0) {
                         val h = state.secondsUntilOffWork / 3600
                         val m = (state.secondsUntilOffWork % 3600) / 60
+                        val s = state.secondsUntilOffWork % 60
                         Text(
-                            text = "距离下班: %d小时%d分".format(h, m),
+                            text = "还有 %d小时%d分钟%d秒 下班".format(h, m, s),
                             style = TextStyle(color = ColorProvider(Color.Gray))
                         )
                     } else if (state.dayType == com.suseoaa.ilovework.domain.DayType.WORKDAY) {

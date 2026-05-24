@@ -107,9 +107,8 @@ struct SalaryWidgetView: View {
         let total = Int(entry.secondsUntilOff)
         let h = total / 3600
         let m = (total % 3600) / 60
-        return h > 0
-            ? String(format: "%d:%02d 后下班", h, m)
-            : String(format: "%d 分后下班", m)
+        let s = total % 60
+        return String(format: "还有 %d小时%d分钟%d秒 下班", h, m, s)
     }
 
     var body: some View {
@@ -200,7 +199,7 @@ struct SalaryWidgetView: View {
                     .foregroundStyle(textSecondary)
 
                 if let countdown = countdownText {
-                    Text("⏱ " + countdown)
+                    Text(countdown)
                         .font(.caption2)
                         .foregroundStyle(textSecondary)
                         .monospacedDigit()

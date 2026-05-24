@@ -19,7 +19,14 @@ data class SettingsState(
     val statutoryMakeupDays: Set<String> = emptySet(),
     val isRestDayPaid: Boolean = false,
     val payday: Int = 10,
-    val isSaved: Boolean = false
+    val isSaved: Boolean = false,
+    val oaUserName: String = "黄卓睿",
+    val oaAccessToken: String = "",
+    val oaConnected: Boolean = false,
+    val workHoursPerDay: Double = 9.0,
+    val enableAutoOASync: Boolean = true,
+    val lastOASyncDate: String = "",
+    val todayClockInTime: String = ""
 ) {
     fun toWorkConfig(): WorkConfig = WorkConfig(
         monthlySalary = monthlySalary,
@@ -36,7 +43,15 @@ data class SettingsState(
         statutoryHolidays = statutoryHolidays,
         statutoryMakeupDays = statutoryMakeupDays,
         isRestDayPaid = isRestDayPaid,
-        payday = payday
+        payday = payday,
+        payday = payday,
+        oaUserName = oaUserName,
+        oaAccessToken = oaAccessToken,
+        oaConnected = oaConnected,
+        workHoursPerDay = workHoursPerDay,
+        enableAutoOASync = enableAutoOASync,
+        lastOASyncDate = lastOASyncDate,
+        todayClockInTime = todayClockInTime
     )
 
     companion object {
@@ -55,7 +70,14 @@ data class SettingsState(
             statutoryHolidays = config.statutoryHolidays,
             statutoryMakeupDays = config.statutoryMakeupDays,
             isRestDayPaid = config.isRestDayPaid,
-            payday = config.payday
+            payday = config.payday,
+            oaUserName = config.oaUserName,
+            oaAccessToken = config.oaAccessToken,
+            oaConnected = config.oaConnected,
+            workHoursPerDay = config.workHoursPerDay,
+            enableAutoOASync = config.enableAutoOASync,
+            lastOASyncDate = config.lastOASyncDate,
+            todayClockInTime = config.todayClockInTime
         )
     }
 }
