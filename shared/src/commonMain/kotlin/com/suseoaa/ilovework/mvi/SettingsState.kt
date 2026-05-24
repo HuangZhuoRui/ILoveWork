@@ -44,7 +44,6 @@ data class SettingsState(
         statutoryMakeupDays = statutoryMakeupDays,
         isRestDayPaid = isRestDayPaid,
         payday = payday,
-        payday = payday,
         oaUserName = oaUserName,
         oaAccessToken = oaAccessToken,
         oaConnected = oaConnected,
