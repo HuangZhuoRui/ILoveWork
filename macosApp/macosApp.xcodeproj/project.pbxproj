@@ -54,7 +54,7 @@
 		3D6B06AACE00CBB4B98FAD08 /* NotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		42E4255E40C8077EF8C5C509 /* SalaryWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SalaryWidget.swift; sourceTree = "<group>"; };
 		491328310628456A3E60BA06 /* Config.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
-		4E892004316B8500E2EBC98E /* macosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4E892004316B8500E2EBC98E /* 我爱上班.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "我爱上班.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		4FB42B11D1238DC20602FAF4 /* macosApp.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = macosApp.entitlements; sourceTree = "<group>"; };
 		62E0B4A140B9A7BFC4293145 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		876F82A2338AB3F204A09F60 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -139,7 +139,7 @@
 		E9D7CA690C6E63C55479C6D3 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4E892004316B8500E2EBC98E /* macosApp.app */,
+				4E892004316B8500E2EBC98E /* 我爱上班.app */,
 				EDC6D6A1B3B61F5F6F9B98EA /* SalaryWidget.appex */,
 			);
 			name = Products;
@@ -193,7 +193,7 @@
 			);
 			name = macosApp;
 			productName = ILoveWork;
-			productReference = 4E892004316B8500E2EBC98E /* macosApp.app */;
+			productReference = 4E892004316B8500E2EBC98E /* 我爱上班.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -390,7 +390,7 @@
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.suseoaa.ilovework.macos;
 				PRODUCT_NAME = "我爱上班";
 				REGISTER_APP_GROUPS = YES;
@@ -490,7 +490,7 @@
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 1;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.suseoaa.ilovework.macos;
 				PRODUCT_NAME = "我爱上班";
 				REGISTER_APP_GROUPS = YES;
