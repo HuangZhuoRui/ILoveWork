@@ -73,11 +73,26 @@ fun SettingsScreen(viewModel: SettingsViewModel, onAddWidgetClick: () -> Unit = 
         // Salary
         CardItem {
             Text("月薪设置", style = MaterialTheme.typography.titleMedium)
-            OutlinedTextField(
-                value = if (state.monthlySalary == state.monthlySalary.toLong().toDouble())
+            
+            var salaryStr by remember { 
+                mutableStateOf(if (state.monthlySalary == state.monthlySalary.toLong().toDouble())
                     state.monthlySalary.toLong().toString()
-                else state.monthlySalary.toString(),
+                else state.monthlySalary.toString()) 
+            }
+            
+            LaunchedEffect(state.monthlySalary) {
+                val currentParsed = salaryStr.toDoubleOrNull()
+                if (currentParsed != state.monthlySalary) {
+                    salaryStr = if (state.monthlySalary == state.monthlySalary.toLong().toDouble())
+                        state.monthlySalary.toLong().toString()
+                    else state.monthlySalary.toString()
+                }
+            }
+
+            OutlinedTextField(
+                value = salaryStr,
                 onValueChange = { v ->
+                    salaryStr = v
                     v.toDoubleOrNull()?.let { viewModel.dispatch(SettingsIntent.UpdateSalary(it)) }
                 },
                 label = { Text("月薪（元）") },
@@ -241,6 +256,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onAddWidgetClick: () -> Unit = 
                     }
                     SalaryWidget().updateAll(context)
                     com.suseoaa.ilovework.widget.WidgetUpdateScheduler.startPeriodicRefresh(context)
+                    com.suseoaa.ilovework.reminder.ReminderScheduler.scheduleReminders(context)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp)
@@ -274,21 +290,47 @@ private fun CardItem(content: @Composable ColumnScope.() -> Unit) {
 
 @Composable
 private fun TimePickerRow(label: String, hour: Int, minute: Int, onChanged: (Int, Int) -> Unit) {
+    var hourStr by remember { mutableStateOf(hour.toString().padStart(2, '0')) }
+    var minuteStr by remember { mutableStateOf(minute.toString().padStart(2, '0')) }
+
+    LaunchedEffect(hour) {
+        if (hourStr.toIntOrNull() != hour) {
+            hourStr = hour.toString().padStart(2, '0')
+        }
+    }
+    LaunchedEffect(minute) {
+        if (minuteStr.toIntOrNull() != minute) {
+            minuteStr = minute.toString().padStart(2, '0')
+        }
+    }
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(label, modifier = Modifier.width(40.dp))
         OutlinedTextField(
-            value = hour.toString().padStart(2, '0'),
-            onValueChange = { onChanged(it.toIntOrNull() ?: hour, minute) },
+            value = hourStr,
+            onValueChange = { v -> 
+                val filtered = v.filter { it.isDigit() }
+                hourStr = filtered
+                filtered.toIntOrNull()?.let { h -> 
+                    if (h in 0..23) onChanged(h, minute)
+                }
+            },
             label = { Text("时") },
             modifier = Modifier.weight(1f)
         )
         Text(":")
         OutlinedTextField(
-            value = minute.toString().padStart(2, '0'),
-            onValueChange = { onChanged(hour, it.toIntOrNull() ?: minute) },
+            value = minuteStr,
+            onValueChange = { v -> 
+                val filtered = v.filter { it.isDigit() }
+                minuteStr = filtered
+                filtered.toIntOrNull()?.let { m -> 
+                    if (m in 0..59) onChanged(hour, m)
+                }
+            },
             label = { Text("分") },
             modifier = Modifier.weight(1f)
         )

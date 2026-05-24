@@ -61,6 +61,7 @@ class ConfigViewModel {
         )
         ConfigStore.save(cfg)
         WidgetCenter.shared.reloadAllTimelines()
+        NotificationManager.shared.scheduleReminders(config: cfg)
         saveStatus = "✓ 已保存，小组件正在刷新…"
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
             self?.saveStatus = ""
@@ -129,6 +130,8 @@ class ConfigViewModel {
 
 struct ContentView: View {
     @State private var vm = ConfigViewModel()
+    @State private var notificationPermissionStatus: String = "检查中..."
+    @State private var pendingNotifications: [String] = []
 
     let allDays = [
         (1, "一"), (2, "二"), (3, "三"), (4, "四"), (5, "五"), (6, "六"), (7, "日")
@@ -270,6 +273,46 @@ struct ContentView: View {
                     .padding(.top, 6)
                 }
 
+                // Notification Debug Panel
+                GroupBox(label: Label("下班提醒状态", systemImage: "bell.badge")) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("通知权限：")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text(notificationPermissionStatus)
+                                .font(.caption.bold())
+                                .foregroundStyle(notificationPermissionStatus.contains("已授权") ? .green : .red)
+                        }
+
+                        if !pendingNotifications.isEmpty {
+                            Text("已计划的提醒：")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            ForEach(pendingNotifications, id: \.self) { n in
+                                Text("• " + n)
+                                    .font(.caption)
+                                    .foregroundStyle(.primary)
+                            }
+                        } else {
+                            Text("暂无已计划的提醒（请先保存配置）")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack(spacing: 8) {
+                            Button("刷新状态") {
+                                refreshNotificationStatus()
+                            }
+                            Button("测试通知（5秒后）") {
+                                NotificationManager.shared.sendTestNotification()
+                            }
+                        }
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 6)
+                }
+
                 // Save
                 VStack(spacing: 8) {
                     Button(action: vm.save) {
@@ -292,6 +335,24 @@ struct ContentView: View {
         }
         .frame(minWidth: 420, minHeight: 650)
         .background(.windowBackground)
+        .onAppear {
+            refreshNotificationStatus()
+        }
+    }
+    
+    private func refreshNotificationStatus() {
+        NotificationManager.shared.checkPermissionStatus { status in
+            switch status {
+            case .authorized:    notificationPermissionStatus = "✅ 已授权"
+            case .denied:        notificationPermissionStatus = "❌ 已拒绝（请到系统设置 > 通知 > 我爱上班 里开启）"
+            case .notDetermined: notificationPermissionStatus = "⚠️ 未决定"
+            case .provisional:   notificationPermissionStatus = "⚠️ 临时授权"
+            @unknown default:    notificationPermissionStatus = "❓ 未知"
+            }
+        }
+        NotificationManager.shared.listPendingNotifications { notifications in
+            pendingNotifications = notifications
+        }
     }
     
     private func modeDescription(_ mode: WorkMode) -> String {
@@ -318,16 +379,25 @@ struct TimeRow: View {
                 .frame(width: 36, alignment: .leading)
                 .foregroundStyle(.secondary)
             Spacer()
-            Stepper(value: $hour, in: 0...23) {
-                Text(String(format: "%02d 时", hour))
-                    .monospacedDigit()
-                    .frame(width: 50, alignment: .trailing)
+            
+            HStack(spacing: 2) {
+                TextField("", value: $hour, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 36)
+                    .textFieldStyle(.roundedBorder)
+                Stepper("", value: $hour, in: 0...23)
+                    .labelsHidden()
             }
+            
             Text(":")
-            Stepper(value: $minute, in: 0...59, step: 5) {
-                Text(String(format: "%02d 分", minute))
-                    .monospacedDigit()
-                    .frame(width: 50, alignment: .trailing)
+            
+            HStack(spacing: 2) {
+                TextField("", value: $minute, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 36)
+                    .textFieldStyle(.roundedBorder)
+                Stepper("", value: $minute, in: 0...59, step: 5)
+                    .labelsHidden()
             }
         }
     }

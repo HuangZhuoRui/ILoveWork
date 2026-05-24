@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 
     <application
         android:allowBackup="true"
@@ -17,6 +19,13 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/salary_widget_info" />
+        </receiver>
+
+        <receiver android:name=".reminder.ReminderReceiver" android:exported="false">
+            <intent-filter>
+                <action android:name="com.suseoaa.ilovework.ACTION_OFF_WORK" />
+                <action android:name="com.suseoaa.ilovework.ACTION_LUNCH_BREAK" />
+            </intent-filter>
         </receiver>
 
         <activity

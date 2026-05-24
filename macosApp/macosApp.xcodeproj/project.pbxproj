@@ -10,6 +10,7 @@
 		1D682F5362496CBE5587D603 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 876F82A2338AB3F204A09F60 /* SwiftUI.framework */; };
 		28AA1668EC74505192C460B6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BFC85680DE14681B99680295 /* WidgetKit.framework */; };
 		2B54683B7551ACB1BE9DE22B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21F747B928898AA5190A174F /* ContentView.swift */; };
+		42A32D2562173B6DCC47764B /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D6B06AACE00CBB4B98FAD08 /* NotificationManager.swift */; };
 		6E7B65F20BB1415741E3C78F /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62E0B4A140B9A7BFC4293145 /* Cocoa.framework */; };
 		826A7EFE34BEE23385F9F664 /* SalaryWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42E4255E40C8077EF8C5C509 /* SalaryWidget.swift */; };
 		90B5BC7666FBCFE3490D29F6 /* macosAppApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD74636E0A6C7B2ECA5BDFFA /* macosAppApp.swift */; };
@@ -50,6 +51,7 @@
 /* Begin PBXFileReference section */
 		0BA2AAC6242E6A7006C2F964 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		21F747B928898AA5190A174F /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3D6B06AACE00CBB4B98FAD08 /* NotificationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		42E4255E40C8077EF8C5C509 /* SalaryWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SalaryWidget.swift; sourceTree = "<group>"; };
 		491328310628456A3E60BA06 /* Config.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Config.swift; sourceTree = "<group>"; };
 		4E892004316B8500E2EBC98E /* macosApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = macosApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -101,6 +103,7 @@
 				BD74636E0A6C7B2ECA5BDFFA /* macosAppApp.swift */,
 				21F747B928898AA5190A174F /* ContentView.swift */,
 				4FB42B11D1238DC20602FAF4 /* macosApp.entitlements */,
+				3D6B06AACE00CBB4B98FAD08 /* NotificationManager.swift */,
 			);
 			path = macosApp;
 			sourceTree = "<group>";
@@ -272,6 +275,7 @@
 				90B5BC7666FBCFE3490D29F6 /* macosAppApp.swift in Sources */,
 				2B54683B7551ACB1BE9DE22B /* ContentView.swift in Sources */,
 				E8D5458BDE19394C575C8A78 /* Config.swift in Sources */,
+				42A32D2562173B6DCC47764B /* NotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

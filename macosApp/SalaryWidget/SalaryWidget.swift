@@ -1,42 +1,60 @@
 import WidgetKit
 import SwiftUI
 
-// MARK: - Timeline Entry (stores pre-computed formula — no I/O at render time)
+// MARK: - Timeline Entry
 
 struct SalaryEntry: TimelineEntry {
     let date: Date
     let formula: ConfigStore.SalaryFormula
+    // Pre-computed display values (computed at entry creation time, zero I/O at render)
+    let earnedAmount: Double
+    let isWorking: Bool
+    let dayType: ConfigStore.DayType
+    let hourlyWage: Double
+    let secondsUntilOff: TimeInterval
 }
 
 // MARK: - Timeline Provider
 
 struct SalaryProvider: TimelineProvider {
     func placeholder(in context: Context) -> SalaryEntry {
-        SalaryEntry(date: Date(), formula: ConfigStore.buildFormula(from: WorkConfig()))
+        makeEntry(date: Date(), formula: ConfigStore.buildFormula(from: WorkConfig()))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SalaryEntry) -> Void) {
         let cfg = ConfigStore.load()
-        completion(SalaryEntry(date: Date(), formula: ConfigStore.buildFormula(from: cfg)))
+        completion(makeEntry(date: Date(), formula: ConfigStore.buildFormula(from: cfg)))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<SalaryEntry>) -> Void) {
         let cfg = ConfigStore.load()
         let now = Date()
 
-        // Build one entry per minute for the next hour (config is stable between saves).
-        // TimelineView(.animation) handles per-frame rendering within each entry.
+        // One entry per minute for the next 2 hours.
+        // Each entry pre-computes its display values so the view is a pure, stateless renderer.
+        // The widget switches entries every minute — this is what drives the real-time update.
         var entries: [SalaryEntry] = []
-        for minuteOffset in 0..<60 {
+        for minuteOffset in 0..<120 {
             let entryDate = Calendar.current.date(byAdding: .minute, value: minuteOffset, to: now)!
-            // Rebuild formula for each future day boundary if needed
             let formula = ConfigStore.buildFormula(from: cfg, on: entryDate)
-            entries.append(SalaryEntry(date: entryDate, formula: formula))
+            entries.append(makeEntry(date: entryDate, formula: formula))
         }
 
-        // Reload after 1 hour to pick up any config changes
-        let reloadDate = Calendar.current.date(byAdding: .hour, value: 1, to: now)!
-        completion(Timeline(entries: entries, policy: .after(reloadDate)))
+        // .atEnd: WidgetKit calls getTimeline again once all 120 entries are consumed (~2 hours).
+        completion(Timeline(entries: entries, policy: .atEnd))
+    }
+
+    private func makeEntry(date: Date, formula: ConfigStore.SalaryFormula) -> SalaryEntry {
+        let (earned, isWorking, dayType, hourlyWage, secondsUntilOff) = formula.earned(at: date)
+        return SalaryEntry(
+            date: date,
+            formula: formula,
+            earnedAmount: earned,
+            isWorking: isWorking,
+            dayType: dayType,
+            hourlyWage: hourlyWage,
+            secondsUntilOff: secondsUntilOff
+        )
     }
 }
 
@@ -55,33 +73,36 @@ struct SalaryWidgetView: View {
     var textPrimary: Color { colorScheme == .dark ? .white : Color(red: 0.1, green: 0.1, blue: 0.1) }
     var textSecondary: Color { textPrimary.opacity(0.55) }
 
-    var body: some View {
-        // TimelineView(.animation) re-renders every display frame.
-        // The closure does ONLY arithmetic — zero I/O, zero allocations.
-        TimelineView(.animation) { ctx in
-            let (earned, isWorking, dayType, hourlyWage, secondsUntilOff) = entry.formula.earned(at: ctx.date)
+    var countdownText: String? {
+        guard entry.secondsUntilOff > 0 else { return nil }
+        let total = Int(entry.secondsUntilOff)
+        let h = total / 3600
+        let m = (total % 3600) / 60
+        return h > 0
+            ? String(format: "%d:%02d 后下班", h, m)
+            : String(format: "%d 分后下班", m)
+    }
 
+    var body: some View {
+        Group {
             switch family {
-            case .systemSmall:
-                smallView(earned: earned, isWorking: isWorking, dayType: dayType, hourlyWage: hourlyWage, secondsUntilOff: secondsUntilOff)
-            default:
-                mediumView(earned: earned, isWorking: isWorking, dayType: dayType, hourlyWage: hourlyWage, secondsUntilOff: secondsUntilOff)
+            case .systemSmall: smallView
+            default:           mediumView
             }
         }
         .containerBackground(for: .widget) { bgColor }
     }
 
-    // MARK: Small
+    // MARK: - Small
 
     @ViewBuilder
-    func smallView(earned: Double, isWorking: Bool, dayType: ConfigStore.DayType, hourlyWage: Double, secondsUntilOff: TimeInterval) -> some View {
+    var smallView: some View {
         VStack(spacing: 6) {
             HStack(spacing: 4) {
                 Circle()
-                    .fill(isWorking ? .green : .orange)
+                    .fill(entry.isWorking ? .green : .orange)
                     .frame(width: 7, height: 7)
-                let statusText = statusText(isWorking: isWorking, dayType: dayType)
-                Text(statusText)
+                Text(statusLabel)
                     .font(.caption2)
                     .foregroundStyle(textSecondary)
             }
@@ -90,27 +111,22 @@ struct SalaryWidgetView: View {
                 .font(.caption)
                 .foregroundStyle(textSecondary)
 
-            Text("¥")
-                .font(.callout.bold())
-                .foregroundStyle(textPrimary)
-            + Text(String(format: "%.4f", earned))
+            (Text("¥").font(.callout.bold())
+             + Text(String(format: "%.4f", entry.earnedAmount))
                 .font(.system(.title2, design: .rounded).bold())
-                .foregroundStyle(textPrimary)
-                .monospacedDigit()
-                
-            Text(String(format: "时薪: ¥%.2f", hourlyWage))
+                .monospacedDigit())
+            .foregroundStyle(textPrimary)
+
+            Text(String(format: "时薪: ¥%.2f", entry.hourlyWage))
                 .font(.caption2)
                 .foregroundStyle(textSecondary)
-                
-            if secondsUntilOff > 0 {
-                let h = Int(secondsUntilOff) / 3600
-                let m = (Int(secondsUntilOff) % 3600) / 60
-                let s = Int(secondsUntilOff) % 60
-                Text(String(format: "下班: %02d:%02d:%02d", h, m, s))
+
+            if let countdown = countdownText {
+                Text(countdown)
                     .font(.system(size: 10))
                     .foregroundStyle(textSecondary)
                     .monospacedDigit()
-            } else if dayType == .workday {
+            } else if entry.dayType == .workday {
                 Text("打卡下班啦！")
                     .font(.system(size: 10))
                     .foregroundStyle(textSecondary)
@@ -119,18 +135,17 @@ struct SalaryWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: Medium
+    // MARK: - Medium
 
     @ViewBuilder
-    func mediumView(earned: Double, isWorking: Bool, dayType: ConfigStore.DayType, hourlyWage: Double, secondsUntilOff: TimeInterval) -> some View {
+    var mediumView: some View {
         HStack {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(isWorking ? .green : .orange)
+                        .fill(entry.isWorking ? .green : .orange)
                         .frame(width: 9, height: 9)
-                    let statusText = statusText(isWorking: isWorking, dayType: dayType)
-                    Text(statusText)
+                    Text(statusLabel)
                         .font(.subheadline.bold())
                         .foregroundStyle(textPrimary)
                 }
@@ -140,26 +155,21 @@ struct SalaryWidgetView: View {
                     .foregroundStyle(textSecondary)
 
                 (Text("¥ ").font(.callout.bold())
-                 + Text(String(format: "%.4f", earned))
+                 + Text(String(format: "%.4f", entry.earnedAmount))
                     .font(.system(.title, design: .rounded).bold())
                     .monospacedDigit())
                 .foregroundStyle(textPrimary)
-                
-                HStack {
-                    Text(String(format: "时薪: ¥%.2f", hourlyWage))
-                        .font(.caption2)
-                        .foregroundStyle(textSecondary)
-                }
-                
-                if secondsUntilOff > 0 {
-                    let h = Int(secondsUntilOff) / 3600
-                    let m = (Int(secondsUntilOff) % 3600) / 60
-                    let s = Int(secondsUntilOff) % 60
-                    Text(String(format: "距离下班还有 %02d:%02d:%02d", h, m, s))
+
+                Text(String(format: "时薪: ¥%.2f", entry.hourlyWage))
+                    .font(.caption2)
+                    .foregroundStyle(textSecondary)
+
+                if let countdown = countdownText {
+                    Text("⏱ " + countdown)
                         .font(.caption2)
                         .foregroundStyle(textSecondary)
                         .monospacedDigit()
-                } else if dayType == .workday {
+                } else if entry.dayType == .workday {
                     Text("打卡下班啦！")
                         .font(.caption2)
                         .foregroundStyle(textSecondary)
@@ -168,14 +178,12 @@ struct SalaryWidgetView: View {
 
             Spacer()
 
-            // Progress arc
-            let progress = progressRatio(earned: earned)
             ZStack {
                 Circle()
                     .stroke(textSecondary.opacity(0.2), lineWidth: 4)
                 Circle()
-                    .trim(from: 0, to: progress)
-                    .stroke(isWorking ? Color.green : Color.orange,
+                    .trim(from: 0, to: progressRatio)
+                    .stroke(entry.isWorking ? Color.green : Color.orange,
                             style: StrokeStyle(lineWidth: 4, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
@@ -185,22 +193,19 @@ struct SalaryWidgetView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func statusText(isWorking: Bool, dayType: ConfigStore.DayType) -> String {
-        switch dayType {
-        case .workday:
-            return isWorking ? "工作中" : "休息中"
-        case .restPaid:
-            return "休息中 (带薪)"
-        case .restUnpaid:
-            return "休息中 (无薪)"
+    private var statusLabel: String {
+        switch entry.dayType {
+        case .workday:    return entry.isWorking ? "工作中" : "休息中"
+        case .restPaid:   return "休息中 (带薪)"
+        case .restUnpaid: return "休息中 (无薪)"
         }
     }
 
-    private func progressRatio(earned: Double) -> Double {
+    private var progressRatio: Double {
         let dailySalary = entry.formula.salaryPerSecond
                         * entry.formula.workEnd.timeIntervalSince(entry.formula.workStart)
         guard dailySalary > 0 else { return 0 }
-        return min(earned / dailySalary, 1.0)
+        return min(entry.earnedAmount / dailySalary, 1.0)
     }
 }
 
