@@ -23,6 +23,8 @@ class MainActivity : ComponentActivity() {
 
         val repository = ConfigRepository(createSettings())
         val viewModel = SettingsViewModel(repository)
+        
+        com.suseoaa.ilovework.widget.WidgetUpdateScheduler.startPeriodicRefresh(this)
 
         setContent {
             AppTheme {

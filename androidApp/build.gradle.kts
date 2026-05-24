@@ -27,6 +27,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.multiplatform.settings.no.arg)
     implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.work.runtime.ktx)
 }
 
 android {

@@ -240,6 +240,7 @@ fun SettingsScreen(viewModel: SettingsViewModel, onAddWidgetClick: () -> Unit = 
                         }
                     }
                     SalaryWidget().updateAll(context)
+                    com.suseoaa.ilovework.widget.WidgetUpdateScheduler.startPeriodicRefresh(context)
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp)
