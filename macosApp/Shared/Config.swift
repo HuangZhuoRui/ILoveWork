@@ -38,17 +38,9 @@ struct WorkConfig {
     var statutoryMakeupDays: Set<String> = [] // YYYY-MM-DD
     var isRestDayPaid: Bool = false
     var payday: Int = 10
-
-    // OA binding
-    var oaUserName: String = ""
-    var oaAccessToken: String = ""
-    var oaConnected: Bool = false
     
-    // OA sync
     var workHoursPerDay: Double = 9.0
-    var enableAutoOASync: Bool = true
-    var lastOASyncDate: String = ""
-    var todayClockInTime: String = ""
+    var refreshFrequency: Int = 5
 }
 
 // MARK: - Formatter Helper
@@ -119,14 +111,8 @@ enum ConfigStore {
         if let v = d["isRestDayPaid"].flatMap(Bool.init) { cfg.isRestDayPaid = v }
         if let v = d["payday"].flatMap(Int.init) { cfg.payday = v }
 
-        if let v = d["oaUserName"]       { cfg.oaUserName    = v }
-        if let v = d["oaAccessToken"]    { cfg.oaAccessToken = v }
-        if let v = d["oaConnected"].flatMap(Bool.init) { cfg.oaConnected = v }
-        
         if let v = d["workHoursPerDay"].flatMap(Double.init) { cfg.workHoursPerDay = v }
-        if let v = d["enableAutoOASync"].flatMap(Bool.init) { cfg.enableAutoOASync = v }
-        if let v = d["lastOASyncDate"] { cfg.lastOASyncDate = v }
-        if let v = d["todayClockInTime"] { cfg.todayClockInTime = v }
+        if let v = d["refreshFrequency"].flatMap(Int.init) { cfg.refreshFrequency = v }
 
         return cfg
     }
@@ -154,13 +140,8 @@ enum ConfigStore {
         lines.append("statutoryMakeupDays=\(makeupDaysStr)")
         lines.append("isRestDayPaid=\(cfg.isRestDayPaid)")
         lines.append("payday=\(cfg.payday)")
-        lines.append("oaUserName=\(cfg.oaUserName)")
-        lines.append("oaAccessToken=\(cfg.oaAccessToken)")
-        lines.append("oaConnected=\(cfg.oaConnected)")
         lines.append("workHoursPerDay=\(cfg.workHoursPerDay)")
-        lines.append("enableAutoOASync=\(cfg.enableAutoOASync)")
-        lines.append("lastOASyncDate=\(cfg.lastOASyncDate)")
-        lines.append("todayClockInTime=\(cfg.todayClockInTime)")
+        lines.append("refreshFrequency=\(cfg.refreshFrequency)")
         
         let url = configURL
         let dir = url.deletingLastPathComponent()
@@ -223,28 +204,10 @@ enum ConfigStore {
             cal.date(bySettingHour: h, minute: m, second: 0, of: date)!
         }
         
-        var effectiveStartHour = cfg.workStartHour
-        var effectiveStartMinute = cfg.workStartMinute
-        var effectiveEndHour = cfg.workEndHour
-        var effectiveEndMinute = cfg.workEndMinute
-        
-        let df = DateFormatter()
-        df.dateFormat = "yyyy-MM-dd"
-        let todayStr = df.string(from: date)
-        
-        // Default to 09:30 if OA sync is enabled but hasn't succeeded today
-        if cfg.enableAutoOASync && cfg.oaConnected && cfg.lastOASyncDate != todayStr {
-            effectiveStartHour = 9
-            effectiveStartMinute = 30
-            
-            // Recalculate end time based on workHoursPerDay
-            let totalStartMinutes = 9 * 60 + 30
-            let totalWorkMinutes = Int(cfg.workHoursPerDay * 60)
-            let totalEndMinutes = totalStartMinutes + totalWorkMinutes
-            effectiveEndHour = (totalEndMinutes / 60) % 24
-            effectiveEndMinute = totalEndMinutes % 60
-        }
-        
+        let effectiveStartHour = cfg.workStartHour
+        let effectiveStartMinute = cfg.workStartMinute
+        let effectiveEndHour = cfg.workEndHour
+        let effectiveEndMinute = cfg.workEndMinute
         let ws = t(effectiveStartHour, effectiveStartMinute)
         let we = t(effectiveEndHour, effectiveEndMinute)
         let ls = t(cfg.lunchStartHour, cfg.lunchStartMinute)

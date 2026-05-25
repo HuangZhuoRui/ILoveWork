@@ -15,6 +15,20 @@ class SettingsViewModel(private val repository: ConfigRepository) {
     private val _state = MutableStateFlow(SettingsState.fromWorkConfig(repository.getWorkConfig()))
     val state: StateFlow<SettingsState> = _state.asStateFlow()
 
+    private fun calculateEnd(
+        startH: Int, startM: Int,
+        lStartH: Int, lStartM: Int,
+        lEndH: Int, lEndM: Int,
+        workHours: Double
+    ): Pair<Int, Int> {
+        val startMins = startH * 60 + startM
+        val lunchMins = (lEndH * 60 + lEndM) - (lStartH * 60 + lStartM)
+        val workMins = (workHours * 60).toInt()
+        val actualLunch = if (lunchMins > 0) lunchMins else 0
+        val totalMins = startMins + actualLunch + workMins
+        return Pair((totalMins / 60) % 24, totalMins % 60)
+    }
+
     fun dispatch(intent: SettingsIntent) {
         when (intent) {
             is SettingsIntent.UpdateSalary ->
@@ -24,16 +38,25 @@ class SettingsViewModel(private val repository: ConfigRepository) {
                 _state.update { it.copy(workMode = intent.mode, isSaved = false) }
 
             is SettingsIntent.UpdateWorkStart ->
-                _state.update { it.copy(workStartHour = intent.hour, workStartMinute = intent.minute, isSaved = false) }
+                _state.update { 
+                    val (endH, endM) = calculateEnd(intent.hour, intent.minute, it.lunchStartHour, it.lunchStartMinute, it.lunchEndHour, it.lunchEndMinute, it.workHoursPerDay)
+                    it.copy(workStartHour = intent.hour, workStartMinute = intent.minute, workEndHour = endH, workEndMinute = endM, isSaved = false) 
+                }
 
             is SettingsIntent.UpdateWorkEnd ->
                 _state.update { it.copy(workEndHour = intent.hour, workEndMinute = intent.minute, isSaved = false) }
 
             is SettingsIntent.UpdateLunchStart ->
-                _state.update { it.copy(lunchStartHour = intent.hour, lunchStartMinute = intent.minute, isSaved = false) }
+                _state.update { 
+                    val (endH, endM) = calculateEnd(it.workStartHour, it.workStartMinute, intent.hour, intent.minute, it.lunchEndHour, it.lunchEndMinute, it.workHoursPerDay)
+                    it.copy(lunchStartHour = intent.hour, lunchStartMinute = intent.minute, workEndHour = endH, workEndMinute = endM, isSaved = false) 
+                }
 
             is SettingsIntent.UpdateLunchEnd ->
-                _state.update { it.copy(lunchEndHour = intent.hour, lunchEndMinute = intent.minute, isSaved = false) }
+                _state.update { 
+                    val (endH, endM) = calculateEnd(it.workStartHour, it.workStartMinute, it.lunchStartHour, it.lunchStartMinute, intent.hour, intent.minute, it.workHoursPerDay)
+                    it.copy(lunchEndHour = intent.hour, lunchEndMinute = intent.minute, workEndHour = endH, workEndMinute = endM, isSaved = false) 
+                }
 
             is SettingsIntent.UpdateCustomWorkDays ->
                 _state.update { it.copy(customWorkDays = intent.days, isSaved = false) }
@@ -46,24 +69,14 @@ class SettingsViewModel(private val repository: ConfigRepository) {
 
             is SettingsIntent.UpdatePayday ->
                 _state.update { it.copy(payday = intent.day, isSaved = false) }
+                
+            is SettingsIntent.UpdateWorkHoursPerDay ->
+                _state.update { 
+                    val (endH, endM) = calculateEnd(it.workStartHour, it.workStartMinute, it.lunchStartHour, it.lunchStartMinute, it.lunchEndHour, it.lunchEndMinute, intent.hours)
+                    it.copy(workHoursPerDay = intent.hours, workEndHour = endH, workEndMinute = endM, isSaved = false)
+                }
 
-            is SettingsIntent.UpdateOaUserName ->
-                _state.update { it.copy(oaUserName = intent.name, isSaved = false) }
 
-            is SettingsIntent.ConnectOa ->
-                _state.update { it.copy(oaAccessToken = intent.accessToken, oaConnected = true, isSaved = false) }
-
-            is SettingsIntent.DisconnectOa ->
-                _state.update { it.copy(oaAccessToken = "", oaConnected = false, isSaved = false) }
-
-            is SettingsIntent.SyncOaTimes ->
-                _state.update { it.copy(
-                    workStartHour = intent.startHour,
-                    workStartMinute = intent.startMin,
-                    workEndHour = intent.endHour,
-                    workEndMinute = intent.endMin,
-                    isSaved = false
-                ) }
 
             is SettingsIntent.SaveConfig -> {
                 val config = _state.value.toWorkConfig()

@@ -265,6 +265,28 @@ fun SettingsScreen(viewModel: SettingsViewModel, onAddWidgetClick: () -> Unit = 
         // Work Hours
         CardItem {
             Text("上班时间", style = MaterialTheme.typography.titleMedium)
+            
+            var workHoursStr by remember { mutableStateOf(state.workHoursPerDay.toString()) }
+            LaunchedEffect(state.workHoursPerDay) {
+                if (workHoursStr.toDoubleOrNull() != state.workHoursPerDay) {
+                    workHoursStr = state.workHoursPerDay.toString()
+                }
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+            ) {
+                Text("工作时长(小时)", modifier = Modifier.weight(1f))
+                OutlinedTextField(
+                    value = workHoursStr,
+                    onValueChange = { v ->
+                        workHoursStr = v
+                        v.toDoubleOrNull()?.let { viewModel.dispatch(SettingsIntent.UpdateWorkHoursPerDay(it)) }
+                    },
+                    modifier = Modifier.width(100.dp)
+                )
+            }
+            
             TimePickerRow("上班", state.workStartHour, state.workStartMinute) { h, m ->
                 viewModel.dispatch(SettingsIntent.UpdateWorkStart(h, m))
             }

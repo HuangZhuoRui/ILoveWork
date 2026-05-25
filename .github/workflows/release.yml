@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-and-release:
-    runs-on: ubuntu-latest # 因为不需要编译 macOS，改回 Ubuntu 更快更稳定
+    runs-on: macos-14 # 使用 macOS runner，以便同时编译 Android 和 macOS
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -100,6 +100,21 @@ jobs:
             mv "$file" "$APK_DIR/我爱上班-Android-${{ steps.check_version.outputs.tag }}.apk"
           done
 
+      - name: Build macOS App & Package DMG
+        if: steps.check_version.outputs.changed == 'true'
+        run: |
+          cd macosApp
+          # 使用 -（ad-hoc 签名）打包，不需要开发者证书，且能保留 App Groups 等权限
+          xcodebuild clean build -project macosApp.xcodeproj -scheme macosApp -configuration Release CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=YES -derivedDataPath derived_data
+          
+          # 找到构建好的 .app 文件
+          APP_PATH=$(find derived_data/Build/Products/Release -name "*.app" | head -n 1)
+          APP_NAME=$(basename "$APP_PATH" .app)
+          
+          echo "Found app at: $APP_PATH"
+          
+          # 制作 DMG
+          hdiutil create -volname "$APP_NAME" -srcfolder "$APP_PATH" -ov -format UDZO "../我爱上班-macOS-${{ steps.check_version.outputs.tag }}.dmg"
 
       - name: Publish GitHub Release
         if: steps.check_version.outputs.changed == 'true'
@@ -110,6 +125,6 @@ jobs:
           body_path: changelog.txt
           files: |
             androidApp/build/outputs/apk/release/我爱上班-Android-*.apk
-            macos_builds/*.zip
+            我爱上班-macOS-*.dmg
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

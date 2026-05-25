@@ -30,13 +30,7 @@ class ConfigRepository(private val settings: Settings) {
             statutoryHolidays = holidays,
             statutoryMakeupDays = makeupDays,
             isRestDayPaid = settings.getBoolean("isRestDayPaid", false),
-            oaUserName = settings.getString("oaUserName", "黄卓睿"),
-            oaAccessToken = settings.getString("oaAccessToken", ""),
-            oaConnected = settings.getBoolean("oaConnected", false),
-            workHoursPerDay = settings.getDouble("workHoursPerDay", 9.0),
-            enableAutoOASync = settings.getBoolean("enableAutoOASync", true),
-            lastOASyncDate = settings.getString("lastOASyncDate", ""),
-            todayClockInTime = settings.getString("todayClockInTime", "")
+            workHoursPerDay = settings.getDouble("workHoursPerDay", 9.0)
         )
     }
 
@@ -55,12 +49,6 @@ class ConfigRepository(private val settings: Settings) {
         settings.putString("statutoryHolidays", config.statutoryHolidays.joinToString(","))
         settings.putString("statutoryMakeupDays", config.statutoryMakeupDays.joinToString(","))
         settings.putBoolean("isRestDayPaid", config.isRestDayPaid)
-        settings.putString("oaUserName", config.oaUserName)
-        settings.putString("oaAccessToken", config.oaAccessToken)
-        settings.putBoolean("oaConnected", config.oaConnected)
         settings.putDouble("workHoursPerDay", config.workHoursPerDay)
-        settings.putBoolean("enableAutoOASync", config.enableAutoOASync)
-        settings.putString("lastOASyncDate", config.lastOASyncDate)
-        settings.putString("todayClockInTime", config.todayClockInTime)
     }
 }

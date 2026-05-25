@@ -3,17 +3,14 @@ import WidgetKit
 
 @main
 struct macosAppApp: App {
-    // Fire every 10 seconds to force the widget to regenerate its timeline
-    // with fresh entry dates, so the countdown and salary update in near real-time.
-    private let widgetRefreshTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
+    // Fire dynamically to force the widget to regenerate its timeline
+    @State private var widgetRefreshTimer = Timer.publish(every: Double(max(1, ConfigStore.load().refreshFrequency)), on: .main, in: .common).autoconnect()
 
     var body: some Scene {
         WindowGroup("ILoveWork — 打工人配置") {
             ContentView()
                 .onAppear {
-                    // Start OA Background Syncer
-                    let _ = OABackgroundSyncer.shared
-                    
+
                     NotificationManager.shared.requestPermission { granted in
                         if granted {
                             let config = ConfigStore.load()
@@ -23,6 +20,10 @@ struct macosAppApp: App {
                 }
                 .onReceive(widgetRefreshTimer) { _ in
                     WidgetCenter.shared.reloadAllTimelines()
+                }
+                .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("ConfigSaved"))) { _ in
+                    let freq = Double(max(1, ConfigStore.load().refreshFrequency))
+                    widgetRefreshTimer = Timer.publish(every: freq, on: .main, in: .common).autoconnect()
                 }
         }
         .windowResizability(.contentSize)

@@ -1,6 +1,8 @@
 import SwiftUI
 import WidgetKit
 import EventKit
+import Foundation
+import AppKit
 
 // MARK: - Observable Config ViewModel
 
@@ -8,38 +10,35 @@ import EventKit
 class ConfigViewModel {
     var monthlySalary: Double
     var workMode: WorkMode
-    var workStartHour: Int
-    var workStartMinute: Int
+    var workStartHour: Int { didSet { recalculateEndTime() } }
+    var workStartMinute: Int { didSet { recalculateEndTime() } }
     var workEndHour: Int
     var workEndMinute: Int
-    var lunchStartHour: Int
-    var lunchStartMinute: Int
-    var lunchEndHour: Int
-    var lunchEndMinute: Int
+    var lunchStartHour: Int { didSet { recalculateEndTime() } }
+    var lunchStartMinute: Int { didSet { recalculateEndTime() } }
+    var lunchEndHour: Int { didSet { recalculateEndTime() } }
+    var lunchEndMinute: Int { didSet { recalculateEndTime() } }
     var customWorkDays: Set<Int>
     var statutoryHolidays: Set<String>
     var statutoryMakeupDays: Set<String>
     var isRestDayPaid: Bool
     var payday: Int
 
-    // OA binding
-    var oaUserName: String
-    var oaAccessToken: String
-    var oaConnected: Bool
-
-    // OA sync
-    var workHoursPerDay: Double
-    var enableAutoOASync: Bool
-    var lastOASyncDate: String
-    var todayClockInTime: String
-
-    // OA flow UI state
-    var oaStatus: String = ""
-    var oaPasteUrl: String = ""
-    var oaStep: OAFlowStep = .idle
+    var workHoursPerDay: Double { didSet { recalculateEndTime() } }
+    var refreshFrequency: Int
 
     var saveStatus: String = ""
     var syncStatus: String = ""
+
+    private func recalculateEndTime() {
+        let startMins = workStartHour * 60 + workStartMinute
+        let lunchMins = (lunchEndHour * 60 + lunchEndMinute) - (lunchStartHour * 60 + lunchStartMinute)
+        let workMins = Int(workHoursPerDay * 60)
+        let actualLunch = lunchMins > 0 ? lunchMins : 0
+        let totalMins = startMins + actualLunch + workMins
+        workEndHour = (totalMins / 60) % 24
+        workEndMinute = totalMins % 60
+    }
 
     init() {
         let cfg = ConfigStore.load()
@@ -58,14 +57,8 @@ class ConfigViewModel {
         statutoryMakeupDays = cfg.statutoryMakeupDays
         isRestDayPaid   = cfg.isRestDayPaid
         payday          = cfg.payday
-        oaUserName      = cfg.oaUserName
-        oaAccessToken   = cfg.oaAccessToken
-        oaConnected     = cfg.oaConnected
         workHoursPerDay = cfg.workHoursPerDay
-        enableAutoOASync = cfg.enableAutoOASync
-        lastOASyncDate  = cfg.lastOASyncDate
-        todayClockInTime = cfg.todayClockInTime
-        oaStep          = cfg.oaConnected ? .connected : .idle
+        refreshFrequency = cfg.refreshFrequency
     }
 
     func save() {
@@ -85,15 +78,11 @@ class ConfigViewModel {
             statutoryMakeupDays: statutoryMakeupDays,
             isRestDayPaid:   isRestDayPaid,
             payday:          payday,
-            oaUserName:      oaUserName,
-            oaAccessToken:   oaAccessToken,
-            oaConnected:     oaConnected,
             workHoursPerDay: workHoursPerDay,
-            enableAutoOASync: enableAutoOASync,
-            lastOASyncDate:  lastOASyncDate,
-            todayClockInTime: todayClockInTime
+            refreshFrequency: refreshFrequency
         )
         ConfigStore.save(cfg)
+        NotificationCenter.default.post(name: NSNotification.Name("ConfigSaved"), object: nil)
         WidgetCenter.shared.reloadAllTimelines()
         NotificationManager.shared.scheduleReminders(config: cfg)
         saveStatus = "✓ 已保存，小组件正在刷新…"
@@ -158,95 +147,6 @@ class ConfigViewModel {
             store.requestAccess(to: .event, completion: completion)
         }
     }
-
-    // MARK: - OA Sync Flow
-
-    /// Step 1: Open browser with PKCE authorization URL
-    func oaStartAuth() {
-        oaStep = .waitingForCode
-        oaStatus = "已打开浏览器，请在授权后复制完整的回调链接粘贴到下方"
-        OASyncService.shared.startAuthFlow()
-    }
-
-    /// Step 2: User pasted the callback URL; exchange code for token
-    func oaExchangeToken() {
-        guard let code = OASyncService.shared.extractCode(from: oaPasteUrl) else {
-            oaStatus = "❌ 无法从链接中解析 code，请确认粘贴了完整的回调链接"
-            return
-        }
-        oaStep = .exchanging
-        oaStatus = "正在获取 Token…"
-        Task { @MainActor in
-            do {
-                let token = try await OASyncService.shared.exchangeToken(code: code)
-                self.oaAccessToken = token
-                self.oaConnected = true
-                self.oaStep = .connected
-                self.oaStatus = "✅ 授权成功！请确认 OA 用户名后点击\"同步打卡时间\""
-                self.save()
-            } catch {
-                self.oaStep = .waitingForCode
-                self.oaStatus = "❌ Token 获取失败：\(error.localizedDescription)"
-            }
-        }
-    }
-
-    /// Step 3: Fetch attendance record and auto-fill work start / end time
-    func oaSyncAttendance() {
-        guard oaConnected, !oaAccessToken.isEmpty else {
-            oaStatus = "❌ 请先完成 OA 授权"
-            return
-        }
-        guard !oaUserName.isEmpty else {
-            oaStatus = "❌ 请先填写 OA 用户名"
-            return
-        }
-        oaStatus = "正在获取打卡记录…"
-        Task { @MainActor in
-            do {
-                let record = try await OASyncService.shared.fetchAttendance(
-                    accessToken: self.oaAccessToken,
-                    userName: self.oaUserName
-                )
-                self.workStartHour   = record.startHour
-                self.workStartMinute = record.startMinute
-                
-                // Calculate auto off-work time
-                let totalStartMinutes = record.startHour * 60 + record.startMinute
-                let totalWorkMinutes = Int(self.workHoursPerDay * 60)
-                let totalEndMinutes = totalStartMinutes + totalWorkMinutes
-                self.workEndHour = (totalEndMinutes / 60) % 24
-                self.workEndMinute = totalEndMinutes % 60
-                
-                self.todayClockInTime = String(format: "%02d:%02d", record.startHour, record.startMinute)
-                
-                let df = DateFormatter()
-                df.dateFormat = "yyyy-MM-dd"
-                self.lastOASyncDate = df.string(from: Date())
-
-                let endPart = "，已自动根据 \(self.workHoursPerDay) 小时工作制设置下班时间为 \(self.workEndHour):\(String(format: "%02d", self.workEndMinute))"
-                self.oaStatus = "✅ 已同步 \(record.date) 的打卡记录（\(record.startHour):\(String(format: "%02d", record.startMinute)) 上班\(endPart)）"
-                self.save()
-            } catch {
-                self.oaStatus = "❌ \(error.localizedDescription)"
-            }
-        }
-    }
-
-    func oaDisconnect() {
-        oaAccessToken = ""
-        oaConnected = false
-        oaStep = .idle
-        oaStatus = ""
-        oaPasteUrl = ""
-        save()
-    }
-}
-
-// MARK: - OA Flow Step
-
-enum OAFlowStep {
-    case idle, waitingForCode, exchanging, connected
 }
 
 // MARK: - Main Settings View
@@ -387,8 +287,7 @@ struct ContentView: View {
                     .padding(.top, 6)
                 }
 
-                // OA Attendance Sync
-                OABindingPanel(vm: vm)
+
 
                 // Work Hours
                 GroupBox(label: Label("上班时间", systemImage: "clock")) {
@@ -426,6 +325,24 @@ struct ContentView: View {
                         TimeRow(label: "结束",
                                 hour: $vm.lunchEndHour,
                                 minute: $vm.lunchEndMinute)
+                    }
+                    .padding(.top, 6)
+                }
+
+                // Refresh Frequency
+                GroupBox(label: Label("小组件刷新", systemImage: "arrow.triangle.2.circlepath")) {
+                    HStack {
+                        Text("刷新频率")
+                        Spacer()
+                        Picker("", selection: $vm.refreshFrequency) {
+                            Text("1 秒").tag(1)
+                            Text("5 秒").tag(5)
+                            Text("10 秒").tag(10)
+                            Text("30 秒").tag(30)
+                            Text("60 秒").tag(60)
+                        }
+                        .pickerStyle(.menu)
+                        .frame(width: 120)
                     }
                     .padding(.top, 6)
                 }
@@ -581,115 +498,11 @@ struct TimeRow: View {
     }
 }
 
-// MARK: - OA Binding Panel
 
-struct OABindingPanel: View {
-    @Bindable var vm: ConfigViewModel
-
-    var body: some View {
-        GroupBox(label: Label("OA 考勤绑定", systemImage: "person.badge.clock")) {
-            VStack(alignment: .leading, spacing: 10) {
-
-                Text("绑定企业 OA 系统，自动同步最近一次打卡时间作为上班时间。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                // Step indicator
-                if vm.oaStep == .idle {
-                    // Not connected yet
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("点击下方按钮将打开浏览器完成 OA 授权。授权后，将浏览器地址栏中以 http://localhost:10010/callback 开头的链接复制粘贴到输入框中。")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        Button("🔗 打开浏览器授权") {
-                            vm.oaStartAuth()
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                } else if vm.oaStep == .waitingForCode || vm.oaStep == .exchanging {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("请在浏览器中完成授权，然后复制回调链接粘贴到下方：")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        TextField("http://localhost:10010/callback?code=...", text: $vm.oaPasteUrl)
-                            .textFieldStyle(.roundedBorder)
-
-                        HStack {
-                            Button("确认授权") {
-                                vm.oaExchangeToken()
-                            }
-                            .disabled(vm.oaPasteUrl.isEmpty || vm.oaStep == .exchanging)
-
-                            if vm.oaStep == .exchanging {
-                                ProgressView()
-                                    .controlSize(.small)
-                            }
-
-                            Button("重新发起") {
-                                vm.oaStartAuth()
-                            }
-                        }
-                    }
-                } else {
-                    // connected
-                    HStack {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(.green)
-                        Text("已连接 OA")
-                            .font(.caption.bold())
-                            .foregroundStyle(.green)
-                        Spacer()
-                        Button("断开连接") {
-                            vm.oaDisconnect()
-                        }
-                        .foregroundStyle(.red)
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Divider()
-
-                // Username field
-                HStack {
-                    Text("OA 用户名")
-                        .frame(width: 72, alignment: .leading)
-                    TextField("例如：zhangsan", text: $vm.oaUserName)
-                        .textFieldStyle(.roundedBorder)
-                }
-
-                // Sync button
-                HStack {
-                    Toggle("自动后台同步", isOn: $vm.enableAutoOASync)
-                        .toggleStyle(.switch)
-                    
-                    Spacer()
-                    
-                    Button("📅 同步今日打卡") {
-                        vm.oaSyncAttendance()
-                    }
-                    .disabled(!vm.oaConnected || vm.oaUserName.isEmpty)
-                }
-
-                // Status message
-                if !vm.oaStatus.isEmpty {
-                    Text(vm.oaStatus)
-                        .font(.caption)
-                        .foregroundStyle(vm.oaStatus.hasPrefix("✅") ? .green : vm.oaStatus.hasPrefix("❌") ? .red : .blue)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            .padding(.top, 6)
-        }
-    }
-}
 
 #Preview {
     ContentView()
 }
-import Foundation
-import AppKit
 
 struct GitHubRelease: Codable, Identifiable {
     var id: Int
@@ -795,7 +608,6 @@ class UpdaterService: ObservableObject {
         isDownloading = false
     }
 }
-import SwiftUI
 
 struct UpdateHistoryView: View {
     @StateObject private var updater = UpdaterService()
