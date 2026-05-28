@@ -30,26 +30,44 @@ jobs:
           else
             ANDROID_VERSION="unknown"
           fi
-          
-          # 提取 macOS 版本
+
+          # 提取 macOS 版本（主 App target 通常排在最前面）
           if [ -f "macosApp/macosApp.xcodeproj/project.pbxproj" ]; then
             MAC_VERSION=$(grep 'MARKETING_VERSION' macosApp/macosApp.xcodeproj/project.pbxproj | head -n 1 | awk -F'=' '{print $2}' | tr -d ' ;"')
           else
             MAC_VERSION="unknown"
           fi
-          
+
           echo "Android Version: $ANDROID_VERSION"
           echo "macOS Version: $MAC_VERSION"
-          
+
           TAG_NAME="v${MAC_VERSION}_${ANDROID_VERSION}"
-          
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME"; then
-            echo "Tag $TAG_NAME 已经存在，说明版本没有更新，跳过。"
-            echo "changed=false" >> $GITHUB_OUTPUT
-            exit 0
+
+          # 获取最近一个 release tag 中的各平台版本
+          LATEST_TAG=$(git tag --sort=-v:refname | grep '^v[0-9]' | head -n 1)
+          if [ -n "$LATEST_TAG" ]; then
+            # 从 tag 中提取版本：v{mac}_{android} → mac 和 android
+            LATEST_MAC=$(echo "$LATEST_TAG" | sed 's/^v//' | cut -d'_' -f1)
+            LATEST_ANDROID=$(echo "$LATEST_TAG" | sed 's/^v//' | cut -d'_' -f2)
+            echo "Latest tag: $LATEST_TAG (mac=$LATEST_MAC, android=$LATEST_ANDROID)"
+
+            # 任一平台版本发生变化即触发
+            MAC_CHANGED=false
+            ANDROID_CHANGED=false
+            [ "$MAC_VERSION" != "$LATEST_MAC" ] && MAC_CHANGED=true
+            [ "$ANDROID_VERSION" != "$LATEST_ANDROID" ] && ANDROID_CHANGED=true
+
+            if [ "$MAC_CHANGED" = false ] && [ "$ANDROID_CHANGED" = false ]; then
+              echo "两个平台版本均未变化，跳过。"
+              echo "changed=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            echo "检测到版本变化: macOS=$MAC_CHANGED, Android=$ANDROID_CHANGED"
+          else
+            echo "没有历史 tag，将创建首个 release"
           fi
-          
-          echo "检测到新版本，将构建并发布 $TAG_NAME"
+
           echo "changed=true" >> $GITHUB_OUTPUT
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
 

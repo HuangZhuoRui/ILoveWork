@@ -151,8 +151,10 @@ struct UpdateView: View {
     }
 
     private func isVersionNewer(latest: String, current: String) -> Bool {
-        let l = latest.replacingOccurrences(of: "v", with: "")
+        // Tags are like "v1.2.2_1.0.2" (macOS_Android), extract just the macOS version before "_"
+        let l = latest.replacingOccurrences(of: "v", with: "").components(separatedBy: "_").first ?? ""
         let c = current.replacingOccurrences(of: "v", with: "")
+        guard !l.isEmpty, !c.isEmpty else { return false }
         return l.compare(c, options: .numeric) == .orderedDescending
     }
 
