@@ -12,7 +12,7 @@ struct UpdateView: View {
                         VStack(alignment: .leading) {
                             Text("检查更新与历史日志")
                                 .font(.headline)
-                            Text("当前版本: \(updater.currentVersion)")
+                            Text(updater.currentVersion.isEmpty ? "当前版本: 未知" : "当前版本: \(updater.currentVersion)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -70,7 +70,7 @@ struct UpdateView: View {
                         HStack {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
-                            Text("当前已是最新版本")
+                            Text(updater.currentVersion.isEmpty ? "当前已是最新版本" : "当前已是最新版本 (\(updater.currentVersion))")
                         }
                         .font(.subheadline)
                         .padding(8)
@@ -215,7 +215,7 @@ class UpdaterService: ObservableObject {
     @Published var errorMessage: String? = nil
 
     var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
     }
 
     func fetchReleases() async {
